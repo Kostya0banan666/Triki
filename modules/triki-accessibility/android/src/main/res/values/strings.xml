@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="triki_accessibility_description">Lets your Triki controller perform swipes and taps (next video, previous video, play/pause, like) in the app on screen. Triki Controller does not read or collect screen content.</string>
+</resources>
