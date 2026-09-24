@@ -125,7 +125,7 @@ export interface GestureThresholds {
   turnThreshold: number;
   /** 0..100, how forgiving the twist detector is */
   turnSensitivity: number;
-  /** swap twist left/right */
+  /** swap twist left/right (false = clockwise seen from above is right) */
   invertTurn: boolean;
   /** raw accel units of vertical impact for a tap */
   tapImpact: number;
@@ -143,7 +143,7 @@ export interface GestureThresholds {
 export const DEFAULT_THRESHOLDS: GestureThresholds = {
   turnThreshold: 1000,
   turnSensitivity: 50,
-  invertTurn: true,
+  invertTurn: false,
   tapImpact: 380,
   tiltAmount: 200,
   doubleTapMs: 600,

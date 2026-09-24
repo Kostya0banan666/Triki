@@ -15,6 +15,8 @@ const FLAT: [number, number, number] = [24, 0, -2050];
 const DT = 19; // ~53 Hz
 
 const flat = (button = false) => raw(BIAS, FLAT, button);
+// A clockwise twist (seen from above) on a real cap lying flat reads as negative gyro Z.
+const RIGHT = -2500;
 const twist = (rate: number) => raw([BIAS[0], BIAS[1], BIAS[2] + rate], FLAT);
 
 class Rig {
@@ -48,16 +50,16 @@ describe('GestureEngine (heading-free moves)', () => {
 
   it('twist right / left, once per twist', () => {
     const r = new Rig();
-    r.feed(twist(2500), 150);
+    r.feed(twist(RIGHT), 150);
     r.feed(flat(), 300);
-    r.feed(twist(-2500), 150);
+    r.feed(twist(-RIGHT), 150);
     r.feed(flat(), 300);
     expect(r.types()).toEqual(['TWIST_RIGHT', 'TWIST_LEFT']);
   });
 
   it('a held twist auto-repeats (volume knob)', () => {
     const r = new Rig();
-    r.feed(twist(2500), 1200);
+    r.feed(twist(RIGHT), 1200);
     const all = r.types(true);
     expect(all[0]).toBe('TWIST_RIGHT');
     expect(all.length).toBeGreaterThanOrEqual(3);
@@ -66,8 +68,8 @@ describe('GestureEngine (heading-free moves)', () => {
 
   it('invertTurn swaps direction', () => {
     const r = new Rig();
-    r.e.setThresholds({ invertTurn: false });
-    r.feed(twist(2500), 150);
+    r.e.setThresholds({ invertTurn: true });
+    r.feed(twist(RIGHT), 150);
     r.feed(flat(), 300);
     expect(r.types()).toEqual(['TWIST_LEFT']);
   });

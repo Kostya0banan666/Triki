@@ -224,7 +224,7 @@ function start(){
   const th=engine.thresholds;
   ['turnThreshold','tapImpact','tiltAmount'].forEach(k=>{const el=$(k),out=el.nextElementSibling;el.value=th[k];out.textContent=th[k];
     el.oninput=()=>{cfg[k]=parseFloat(el.value);out.textContent=el.value;engine.setThresholds(cfg);try{localStorage.setItem('trikiCfg2',JSON.stringify(cfg))}catch(e){}}});
-  $('swap').checked=!th.invertTurn;$('swap').onchange=()=>{cfg.invertTurn=!$('swap').checked;engine.setThresholds(cfg);try{localStorage.setItem('trikiCfg2',JSON.stringify(cfg))}catch(e){}};
+  $('swap').checked=th.invertTurn;$('swap').onchange=()=>{cfg.invertTurn=$('swap').checked;engine.setThresholds(cfg);try{localStorage.setItem('trikiCfg2',JSON.stringify(cfg))}catch(e){}};
   window.__triki={engine,parser};
 }
 start();

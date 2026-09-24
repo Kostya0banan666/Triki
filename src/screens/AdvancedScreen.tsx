@@ -82,7 +82,7 @@ export function AdvancedScreen() {
             <Txt weight="semibold">Swap twist direction</Txt>
             <Txt style={{ color: T.dim, fontSize: 12 }}>if right/left come out backwards</Txt>
           </View>
-          <Switch value={!thresholds.invertTurn} onValueChange={(v) => setThresholds({ invertTurn: !v })} trackColor={{ true: T.green2 }} />
+          <Switch value={thresholds.invertTurn} onValueChange={(v) => setThresholds({ invertTurn: v })} trackColor={{ true: T.green2 }} />
         </View>
         <GlowButton label="Reset tuning" kind="dark" icon="restore" onPress={resetThresholds} />
       </Card>

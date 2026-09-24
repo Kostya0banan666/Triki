@@ -271,8 +271,8 @@ export class GestureEngine {
     const cg: V3 = [gyro[0] - this.gyroBias[0], gyro[1] - this.gyroBias[1], gyro[2] - this.gyroBias[2]];
     const spin = norm(cg);
     const rawTwist = dot(cg, gu);
-    // koksny's default (invertTurn) treats a negative projection as a right twist
-    const twist = c.invertTurn ? -rawTwist : rawTwist; // + = right
+    // + = right (clockwise). Verified on a real cap; TRIKI Control inverts this for its game turn.
+    const twist = c.invertTurn ? -rawTwist : rawTwist;
     const verticalImpact = Math.abs(Math.abs(dot(accel, gu)) - GRAVITY);
     const horizontal = Math.hypot(accel[0] - this.gravityRef[0], accel[1] - this.gravityRef[1]);
     const tilt = Math.sqrt(Math.max(0, GRAVITY * GRAVITY - g[2] * g[2]));

@@ -28,6 +28,10 @@ interface AppCtx {
   refreshService: () => void;
   streamRate: StreamRate;
   setStreamRate: (r: StreamRate) => void;
+  /** Android accessibility setup screen */
+  setupVisible: boolean;
+  showSetup: () => void;
+  hideSetup: () => void;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -48,6 +52,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [serviceOn, setServiceOn] = useState(isSystemServiceEnabled());
   const [streamRate, setRate] = useState<StreamRate>(DEFAULT_RATE);
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
+  // ask for the accessibility service right away on Android
+  const [setupVisible, setSetupVisible] = useState(systemControlSupported && !isSystemServiceEnabled());
 
   const profile = profiles.find((p) => p.id === activeId) ?? profiles[0];
   const thresholds = useMemo(() => ({ ...DEFAULT_THRESHOLDS, ...profile.tuning }), [profile]);
@@ -97,6 +103,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [engine]);
 
+  // close the setup screen as soon as the service is on
+  useEffect(() => {
+    if (serviceOn) setSetupVisible(false);
+  }, [serviceOn]);
+
   // Android: foreground service while controlling other apps
   const connected = status.state === 'connected' || status.state === 'streaming' || status.state === 'reconnecting';
   const keepAlive = systemControlSupported && output && serviceOn && connected;
@@ -133,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setOutput: (v) => {
         setOut(v);
         save(K_OUTPUT, v);
+        if (v && systemControlSupported && !serviceOn) setSetupVisible(true);
         if (v && Platform.OS === 'android' && Number(Platform.Version) >= 33) {
           // lets the "Triki is controlling your phone" notification show
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
@@ -146,8 +158,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         save(K_RATE, r);
         triki.streamRate = r;
       },
+      setupVisible,
+      showSetup: () => setSetupVisible(true),
+      hideSetup: () => setSetupVisible(false),
     };
-  }, [status, engine, profiles, profile, thresholds, lastGesture, output, serviceOn, streamRate]);
+  }, [status, engine, profiles, profile, thresholds, lastGesture, output, serviceOn, streamRate, setupVisible]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

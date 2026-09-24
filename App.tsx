@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
 import { AppProvider } from './src/hooks/AppContext';
+import { AccessibilitySetup } from './src/components/AccessibilitySetup';
 import { useSystemControl } from './src/hooks/useSystemControl';
 import { ControlScreen, type TabId } from './src/screens/ControlScreen';
 import { MovesScreen } from './src/screens/MovesScreen';
@@ -36,6 +37,7 @@ export default function App() {
     <AppProvider>
       <StatusBar style="light" />
       <SystemControlBridge />
+      <AccessibilitySetup />
       <View style={{ flex: 1, backgroundColor: T.bgMid }}>
         {tab === 'control' ? <ControlScreen go={setTab} /> : null}
         {tab === 'moves' ? <MovesScreen /> : null}

@@ -5,7 +5,7 @@ import { triki } from '../bluetooth/TrikiBLE';
 import { useApp } from '../hooks/AppContext';
 import { GESTURE_INFO, MAPPABLE_GESTURES } from '../gestures/types';
 import { ACTION_LABEL } from '../profiles/profiles';
-import { openAccessibilitySettings, openAppSettings, systemControlSupported } from '../system/SystemControl';
+import { openAppSettings, systemControlSupported } from '../system/SystemControl';
 import { AppHeader, StepPills } from '../components/Header';
 import { CapStage } from '../components/CapStage';
 import { LiveMeters, useLiveSnapshot } from '../components/LiveMeters';
@@ -15,7 +15,7 @@ import { GESTURE_ICON, type IconName } from '../components/theme';
 export type TabId = 'control' | 'moves' | 'mapping' | 'advanced' | 'web';
 
 export function ControlScreen({ go }: { go: (tab: TabId) => void }) {
-  const { status, profile, profiles, setActiveProfileId, output, setOutput, serviceOn, refreshService } = useApp();
+  const { status, profile, profiles, setActiveProfileId, output, setOutput, serviceOn, refreshService, showSetup } = useApp();
   const [led, setLed] = useState(false);
   const streaming = status.state === 'streaming';
   const connected = streaming || status.state === 'connected';
@@ -101,7 +101,7 @@ export function ControlScreen({ go }: { go: (tab: TabId) => void }) {
               <Txt style={{ color: T.amber }}>
                 Android needs your OK before any app may swipe for you. Turn on <Txt weight="bold" style={{ color: T.amber }}>Triki Controller</Txt> in Accessibility.
               </Txt>
-              <GlowButton big label="Enable phone control" icon="gesture-swipe-vertical" onPress={openAccessibilitySettings} />
+              <GlowButton big label="Enable phone control" icon="gesture-swipe-vertical" onPress={showSetup} />
               <Pressable onPress={openAppSettings}>
                 <Txt style={{ color: T.cyan, fontSize: 13 }}>
                   Greyed out / “Restricted setting”? Open App info → ⋮ → Allow restricted settings, then try again.
