@@ -35,9 +35,11 @@ jobs:
       - name: Check the Triki control module is autolinked
         run: |
           out=$(npx expo-modules-autolinking resolve --platform android --json 2>&1 || true)
-          if echo "$out" | grep -q "trikiaccessibility"; then echo "OK: triki-accessibility is autolinked"; else
-            echo "::warning title=Triki module may not be autolinked::$(echo "$out" | head -c 3000 | tr '
-' ' ')"; fi
+          if echo "$out" | grep -q "trikiaccessibility"; then
+            echo "OK: triki-accessibility is autolinked"
+          else
+            echo "::warning title=Triki module may not be autolinked::$(echo "$out" | head -c 3000 | tr '\n' ' ')"
+          fi
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install 2>&1 | tee prebuild.log
       - name: Build release APK (arm64)
