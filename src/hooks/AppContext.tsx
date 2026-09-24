@@ -29,7 +29,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [thresholds, setThr] = useState<GestureThresholds>(DEFAULT_THRESHOLDS);
   const [profiles, setProf] = useState<Profile[]>(DEFAULT_PROFILES);
   const [activeProfileId, setActive] = useState('tiktok');
-  const [systemControl, setSys] = useState(false);
+  const [systemControl, setSys] = useState(true);
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       engine.setThresholds(merged);
       setProf(await load('profiles', DEFAULT_PROFILES));
       setActive(await load('activeProfile', 'tiktok'));
-      setSys(await load('systemControl', false));
+      setSys(await load('systemControl', true));
     })();
   }, [engine]);
 
