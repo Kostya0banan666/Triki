@@ -32,6 +32,12 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
       - run: npm install
+      - name: Check the Triki control module is autolinked
+        run: |
+          out=$(npx expo-modules-autolinking resolve --platform android --json 2>&1 || true)
+          if echo "$out" | grep -q "trikiaccessibility"; then echo "OK: triki-accessibility is autolinked"; else
+            echo "::warning title=Triki module may not be autolinked::$(echo "$out" | head -c 3000 | tr '
+' ' ')"; fi
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install 2>&1 | tee prebuild.log
       - name: Build release APK (arm64)
@@ -49,6 +55,17 @@ jobs:
           echo "::error title=Android build failed::$msg"
       - name: Collect APK
         run: cp android/app/build/outputs/apk/release/app-release.apk triki-controller.apk
+      - name: Verify the accessibility service is inside the APK
+        run: |
+          python3 - <<'EOF'
+          import sys, zipfile
+          man = zipfile.ZipFile('triki-controller.apk').read('AndroidManifest.xml')
+          missing = [s for s in ('TrikiAccessibilityService', 'TrikiKeepAliveService') if s.encode('utf-16-le') not in man and s.encode() not in man]
+          if missing:
+              print('::error title=APK is missing the Android control module::' + ', '.join(missing))
+              sys.exit(1)
+          print('OK: accessibility + keep-alive services present')
+          EOF
       - uses: actions/upload-artifact@v4
         with:
           name: triki-controller-apk

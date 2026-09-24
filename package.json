@@ -24,7 +24,8 @@
     "react-native": "0.86.3",
     "react-native-ble-plx": "^3.5.1",
     "react-native-svg": "15.15.4",
-    "react-native-webview": "13.16.1"
+    "react-native-webview": "13.16.1",
+    "triki-accessibility": "file:./modules/triki-accessibility"
   },
   "devDependencies": {
     "@types/base-64": "^1.0.2",
