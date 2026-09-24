@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { useApp } from './AppContext';
 import { runSystemAction, systemControlSupported } from '../system/SystemControl';
+import { log } from '../utils/log';
 
 /**
  * Routes recognised gestures to system-wide swipes/taps (Android) using the
@@ -21,9 +22,14 @@ export function useSystemControl(): void {
     if (!systemControlSupported || !systemControl) return;
     const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0];
     return engine.on((e) => {
-      if (appState.current === 'active') return;
       const action = profile.mappings[e.type];
-      if (action && action !== 'NONE') runSystemAction(action);
+      if (!action || action === 'NONE') return;
+      if (appState.current === 'active') {
+        log(`${e.type} -> ${action} skipped (Triki app is on screen; switch to TikTok)`);
+        return;
+      }
+      const ok = runSystemAction(action);
+      log(`${e.type} -> ${action} ${ok ? 'sent' : 'FAILED'}`, ok ? 'info' : 'warn');
     });
   }, [engine, profiles, activeProfileId, systemControl]);
 }

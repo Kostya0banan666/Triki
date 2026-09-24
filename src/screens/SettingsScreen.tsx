@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppState, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { isSystemServiceEnabled, openAccessibilitySettings, systemControlSupported } from '../system/SystemControl';
+import { isSystemServiceEnabled, openAccessibilitySettings, runSystemAction, systemControlSupported } from '../system/SystemControl';
+import { log } from '../utils/log';
 import { useApp } from '../hooks/AppContext';
 import { DEFAULT_THRESHOLDS, type Axis, type AxisMap, type GestureThresholds } from '../gestures/types';
 import { Btn, C, Card, s } from '../components/ui';
@@ -70,6 +71,13 @@ export function SettingsScreen() {
             <Text style={s.text}>System control</Text>
             <Switch value={systemControl} onValueChange={setSystemControl} />
           </View>
+          <Btn
+            label="Test: swipe to next video in 5 s"
+            onPress={() => {
+              log('Test swipe in 5 s: open TikTok now');
+              setTimeout(() => log(`Test swipe ${runSystemAction('NEXT') ? 'sent' : 'FAILED (service off)'}`), 5000);
+            }}
+          />
         </Card>
       ) : null}
       <Card title="GESTURE THRESHOLDS">
