@@ -15,6 +15,9 @@ interface AppCtx {
   activeProfileId: string;
   setActiveProfileId: (id: string) => void;
   lastGesture: GestureEvent | null;
+  /** Android: drive the foreground app via the accessibility service */
+  systemControl: boolean;
+  setSystemControl: (v: boolean) => void;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -26,6 +29,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [thresholds, setThr] = useState<GestureThresholds>(DEFAULT_THRESHOLDS);
   const [profiles, setProf] = useState<Profile[]>(DEFAULT_PROFILES);
   const [activeProfileId, setActive] = useState('tiktok');
+  const [systemControl, setSys] = useState(false);
   const [lastGesture, setLastGesture] = useState<GestureEvent | null>(null);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       engine.setThresholds(merged);
       setProf(await load('profiles', DEFAULT_PROFILES));
       setActive(await load('activeProfile', 'tiktok'));
+      setSys(await load('systemControl', false));
     })();
   }, [engine]);
 
@@ -74,8 +79,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         save('activeProfile', id);
       },
       lastGesture,
+      systemControl,
+      setSystemControl: (v) => {
+        setSys(v);
+        save('systemControl', v);
+      },
     }),
-    [status, engine, thresholds, profiles, activeProfileId, lastGesture],
+    [status, engine, thresholds, profiles, activeProfileId, lastGesture, systemControl],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

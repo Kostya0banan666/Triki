@@ -1,6 +1,6 @@
 import { BleManager, State, type Device, type Subscription } from 'react-native-ble-plx';
 import { decode as atob, encode as btoa } from 'base-64';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, PermissionsAndroid, Platform, type AppStateStatus } from 'react-native';
 import type { ConnectionState, FoundDevice, TrikiFrame } from '../types/triki';
 import { TrikiFrameParser, bytesToHex } from './TrikiFrameParser';
 import {
@@ -38,6 +38,15 @@ const b64ToBytes = (b64: string): Uint8Array => {
   return out;
 };
 const bytesToB64 = (b: number[]): string => btoa(String.fromCharCode(...b));
+async function androidPermissions(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  const perms =
+    Number(Platform.Version) >= 31
+      ? [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN, PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]
+      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+  const res = await PermissionsAndroid.requestMultiple(perms);
+  return perms.every((p) => res[p] === PermissionsAndroid.RESULTS.GRANTED);
+}
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -96,6 +105,10 @@ export class TrikiBLE {
 
   // ---------- scanning ----------
   async scan(): Promise<void> {
+    if (!(await androidPermissions())) {
+      this.setStatus({ state: 'unauthorized', error: 'Bluetooth permission denied. Allow "Nearby devices" in app settings.' });
+      return;
+    }
     const s = await this.manager.state();
     if (s !== State.PoweredOn) {
       this.setStatus({ state: s === State.Unauthorized ? 'unauthorized' : 'bluetooth-off', error: `Bluetooth not ready (${s})` });
@@ -141,7 +154,7 @@ export class TrikiBLE {
     this.setStatus({ state: 'connecting', device: target, error: null, stalled: false });
     log(`Connecting to ${target.name}…`);
     try {
-      const d = await this.manager.connectToDevice(target.id, { timeout: CONNECT_TIMEOUT_MS });
+      const d = await this.manager.connectToDevice(target.id, { timeout: CONNECT_TIMEOUT_MS, requestMTU: 185 });
       log('Connected. Discovering services…');
       await d.discoverAllServicesAndCharacteristics();
       const services = await d.services();

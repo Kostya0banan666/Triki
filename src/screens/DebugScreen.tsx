@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { useApp } from '../hooks/AppContext';
 import { GESTURE_LABEL, type GestureEvent } from '../gestures/types';
 import { LivePanel } from '../components/LivePanel';
@@ -44,7 +44,7 @@ export function DebugScreen() {
       <Card title="BLE LOG">
         <Btn label="Clear log" onPress={clearLog} />
         {logs.map((l, i) => (
-          <Text key={i} style={{ color: l.level === 'error' ? C.red : l.level === 'warn' ? C.amber : C.dim, fontSize: 12, fontFamily: 'Menlo' }}>
+          <Text key={i} style={{ color: l.level === 'error' ? C.red : l.level === 'warn' ? C.amber : C.dim, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
             {new Date(l.t).toLocaleTimeString()} {l.msg}
           </Text>
         ))}

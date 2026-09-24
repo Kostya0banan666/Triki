@@ -1,4 +1,4 @@
-# Triki Controller (iPhone)
+# Triki Controller (Android + iPhone)
 
 An iPhone app plus a Web Bluetooth page for the **Żabka Triki / HOPX** BLE motion controller.
 You do **not** need a Mac. Builds run on Expo's EAS cloud servers.
@@ -10,6 +10,30 @@ You do **not** need a Mac. Builds run on Expo's EAS cloud servers.
 | Tests | `__tests__/` | Jest tests for the stream parser and gesture engine. They run in GitHub Actions |
 
 ---
+
+## 0. Android: the recommended route (free)
+
+On Android the app can **control TikTok / YouTube Shorts / Instagram Reels themselves**, not just an in-app browser.
+It uses a public Android API: an **Accessibility Service** with `dispatchGesture` (see `modules/triki-accessibility`).
+Flick up swipes to the next video, a click taps to play/pause, and a double click likes. Twisting changes the system volume.
+
+Build (free Expo account, no Google Play account needed). From a phone, use GitHub Codespaces:
+```bash
+npm install
+npx eas-cli@latest login
+npx eas-cli@latest init
+npx eas-cli@latest build --platform android --profile preview
+```
+Say **Yes** when EAS offers to generate a keystore. When the build finishes, open its link on the Android phone, download the `.apk`, and install it. Allow "install unknown apps" for your browser if asked.
+
+Then:
+1. Open Triki Controller, allow **Nearby devices**, and tap Scan, Connect, then Start Sensor.
+2. Go to **Settings, then Control other apps, then Open Accessibility settings**, and turn on **Triki Controller**.
+   On Android 13+ a sideloaded app first shows "Restricted setting". Go to Android Settings, then Apps, then Triki Controller, tap **⋮**, choose **Allow restricted settings**, and try again.
+3. Turn on **System control**, pick a profile such as TikTok, and switch to TikTok. Gestures only fire while Triki Controller is in the background, so it never swipes its own screen.
+4. Some phones (Xiaomi, Samsung, etc.) kill background apps. Set Triki Controller's battery usage to **Unrestricted**.
+
+Later builds: add the `EXPO_TOKEN` repo secret, then open **Actions, then EAS build, then Run workflow** and choose platform android.
 
 ## 1. Apple account: what you actually need
 
@@ -38,7 +62,7 @@ If you don't have it, use the **Triki Web Controller** (section 4). It's free an
 - **URL schemes** can *open* TikTok or YouTube (e.g. `snssdk1233://`). They can't scroll or like inside those apps
 - **GameController framework** is only for reading game controllers inside your own app. Triki isn't an MFi or HID gamepad
 
-### Not possible with public iOS APIs
+### Not possible with public iOS APIs (Android can: see section 0)
 - Injecting touches or swipes into another app such as the native TikTok app. There's no public API for this; `UIEvent` synthesis and private frameworks are App Store violations
 - Pretending to be a Bluetooth keyboard or HID device from an iPhone app. iOS apps can't advertise the HID-over-GATT profile
 - Accessibility **Switch Control** can scan and tap other apps using a *Bluetooth switch*. But Triki only speaks Nordic UART, not the HID switch profile, and an app can't feed Switch Control. The one real system-wide route is hardware: re-flash Triki, or add a relay such as an ESP32 acting as a BLE HID keyboard or switch. That's out of scope
@@ -103,7 +127,9 @@ The page shows the live button, gyro and accelerometer data, detects gestures, a
 - Frame: 14 bytes. The header is `0x22`, followed by the button byte (`00`/`01`), then gyro XYZ and accel XYZ as int16 LE. gyro/131 gives °/s; accel/2048 gives g
 
 ```
+modules/triki-accessibility/  Android native module (Kotlin): AccessibilityService, swipe/tap/volume
 src/
+  system/     SystemControl.ts (maps profile actions to Android swipes/taps), hooks/useSystemControl.ts
   bluetooth/  TrikiBLE.ts (scan/connect/reconnect/watchdog), TrikiFrameParser.ts, constants.ts
   gestures/   GestureEngine.ts (pure TS, platform-free), types.ts (thresholds, axis mapping)
   profiles/   profiles.ts (TikTok / Shorts / Reels / Media / Custom, editable, saved)

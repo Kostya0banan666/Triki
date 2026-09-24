@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider } from './src/hooks/AppContext';
+import { useSystemControl } from './src/hooks/useSystemControl';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { DebugScreen } from './src/screens/DebugScreen';
 import { ProfilesScreen } from './src/screens/ProfilesScreen';
@@ -17,11 +18,17 @@ const TABS = [
   { id: 'settings', label: 'Settings', icon: '⚙', Screen: SettingsScreen },
 ] as const;
 
+function SystemControlBridge() {
+  useSystemControl();
+  return null;
+}
+
 export default function App() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('home');
   return (
     <AppProvider>
       <StatusBar style="light" />
+      <SystemControlBridge />
       <View style={{ flex: 1, backgroundColor: C.bg }}>
         {/* Web tab stays mounted so the page is not reloaded when switching tabs */}
         {TABS.map(({ id, Screen }) =>

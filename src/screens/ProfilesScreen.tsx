@@ -1,34 +1,26 @@
 import React, { useState } from 'react';
-import { ActionSheetIOS, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useApp } from '../hooks/AppContext';
 import { ALL_GESTURES, GESTURE_LABEL, type GestureType } from '../gestures/types';
 import { ACTION_LABEL, ALL_ACTIONS, DEFAULT_PROFILES } from '../profiles/profiles';
 import { WEB_TARGETS } from '../webController/targets';
 import { Btn, C, Card, s } from '../components/ui';
+import { OptionPicker } from '../components/OptionPicker';
 
 export function ProfilesScreen() {
   const { profiles, setProfiles, activeProfileId, setActiveProfileId } = useApp();
   const [editing, setEditing] = useState(activeProfileId);
   const profile = profiles.find((p) => p.id === editing) ?? profiles[0];
 
-  const pickAction = (g: GestureType) => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      { title: GESTURE_LABEL[g], options: [...ALL_ACTIONS.map((a) => ACTION_LABEL[a]), 'Cancel'], cancelButtonIndex: ALL_ACTIONS.length },
-      (i) => {
-        if (i >= ALL_ACTIONS.length) return;
-        setProfiles(profiles.map((p) => (p.id === profile.id ? { ...p, mappings: { ...p.mappings, [g]: ALL_ACTIONS[i] } } : p)));
-      },
-    );
-  };
+  const [picking, setPicking] = useState<GestureType | 'target' | null>(null);
 
-  const pickTarget = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      { title: 'Web service', options: [...WEB_TARGETS.map((t) => t.name), 'Cancel'], cancelButtonIndex: WEB_TARGETS.length },
-      (i) => {
-        if (i >= WEB_TARGETS.length) return;
-        setProfiles(profiles.map((p) => (p.id === profile.id ? { ...p, targetId: WEB_TARGETS[i].id } : p)));
-      },
-    );
+  const onPick = (i: number) => {
+    if (picking === 'target') {
+      setProfiles(profiles.map((p) => (p.id === profile.id ? { ...p, targetId: WEB_TARGETS[i].id } : p)));
+    } else if (picking) {
+      const g = picking;
+      setProfiles(profiles.map((p) => (p.id === profile.id ? { ...p, mappings: { ...p.mappings, [g]: ALL_ACTIONS[i] } } : p)));
+    }
   };
 
   return (
@@ -50,13 +42,13 @@ export function ProfilesScreen() {
       </ScrollView>
 
       <Card title={`${profile.name.toUpperCase()} MAPPING`}>
-        <Pressable onPress={pickTarget}>
+        <Pressable onPress={() => setPicking('target')}>
           <Text style={s.text}>
             Web service: <Text style={{ color: C.blue }}>{WEB_TARGETS.find((t) => t.id === profile.targetId)?.name ?? '?'}</Text>
           </Text>
         </Pressable>
         {ALL_GESTURES.map((g) => (
-          <Pressable key={g} onPress={() => pickAction(g)}>
+          <Pressable key={g} onPress={() => setPicking(g)}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: 1, borderColor: C.border }}>
               <Text style={s.text}>{GESTURE_LABEL[g]}</Text>
               <Text style={{ color: profile.mappings[g] && profile.mappings[g] !== 'NONE' ? C.accent : C.dim }}>
@@ -74,6 +66,13 @@ export function ProfilesScreen() {
           }}
         />
       </Card>
+      <OptionPicker
+        visible={picking !== null}
+        title={picking === 'target' ? 'Web service' : picking ? GESTURE_LABEL[picking] : ''}
+        options={picking === 'target' ? WEB_TARGETS.map((t) => t.name) : ALL_ACTIONS.map((a) => ACTION_LABEL[a])}
+        onPick={onPick}
+        onClose={() => setPicking(null)}
+      />
     </ScrollView>
   );
 }

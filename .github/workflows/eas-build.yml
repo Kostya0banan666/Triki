@@ -1,12 +1,17 @@
 # Run from the GitHub app/website: Actions → "EAS iOS build" → Run workflow.
 # Needs repository secret EXPO_TOKEN (expo.dev → Account settings → Access tokens).
-# The FIRST iOS build must be run interactively once (Codespaces) so EAS can
+# The FIRST build must be run interactively once (Codespaces) so EAS can
 # create your certificates and register your iPhone; after that this works.
-name: EAS iOS build
+name: EAS build
 
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform'
+        default: 'android'
+        type: choice
+        options: [android, ios]
       profile:
         description: 'EAS build profile'
         default: 'preview'
@@ -26,4 +31,4 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm install
-      - run: eas build --platform ios --profile ${{ inputs.profile }} --non-interactive --no-wait
+      - run: eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait

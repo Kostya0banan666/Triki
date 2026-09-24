@@ -1,5 +1,6 @@
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { AppState, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { isSystemServiceEnabled, openAccessibilitySettings, systemControlSupported } from '../system/SystemControl';
 import { useApp } from '../hooks/AppContext';
 import { DEFAULT_THRESHOLDS, type Axis, type AxisMap, type GestureThresholds } from '../gestures/types';
 import { Btn, C, Card, s } from '../components/ui';
@@ -43,12 +44,34 @@ function Stepper({ label, value, unit, onChange, step }: { label: string; value:
 }
 
 export function SettingsScreen() {
-  const { thresholds: t, setThresholds } = useApp();
+  const { thresholds: t, setThresholds, systemControl, setSystemControl } = useApp();
+  const [serviceOn, setServiceOn] = useState(isSystemServiceEnabled());
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && setServiceOn(isSystemServiceEnabled()));
+    return () => sub.remove();
+  }, []);
   const setAxis = (k: (typeof AXES)[number]['key'], m: AxisMap) => setThresholds({ ...t, [k]: m });
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <Text style={s.h1}>Settings</Text>
+      {systemControlSupported ? (
+        <Card title="CONTROL OTHER APPS (ANDROID)">
+          <Text style={s.dim}>
+            Swipes/taps in TikTok, Shorts, Reels etc. using the active profile. Works while this app is in the background.
+          </Text>
+          <Text style={{ color: serviceOn ? C.accent : C.amber, fontWeight: '700' }}>
+            ● Accessibility service {serviceOn ? 'enabled' : 'disabled'}
+          </Text>
+          {!serviceOn ? (
+            <Btn label="Open Accessibility settings" kind="primary" onPress={openAccessibilitySettings} />
+          ) : null}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={s.text}>System control</Text>
+            <Switch value={systemControl} onValueChange={setSystemControl} />
+          </View>
+        </Card>
+      ) : null}
       <Card title="GESTURE THRESHOLDS">
         {NUMERIC.map((n) => (
           <Stepper key={n.key} label={n.label} value={t[n.key]} unit={n.unit} step={n.step} onChange={(v) => setThresholds({ ...t, [n.key]: Math.round(v * 100) / 100 })} />
@@ -75,8 +98,8 @@ export function SettingsScreen() {
       <Btn label="Reset to defaults" onPress={() => setThresholds(DEFAULT_THRESHOLDS)} />
       <Card title="ABOUT iOS LIMITS">
         <Text style={s.dim}>
-          iOS does not let apps inject touches or swipes into other apps. Triki can control video inside this app's Web tab. See README for
-          the full list of what is and is not possible.
+          iOS does not let apps inject touches into other apps; there, Triki controls video inside this app's Web tab. Android allows it
+          through the Accessibility service above.
         </Text>
       </Card>
     </ScrollView>

@@ -8,7 +8,7 @@
     "backgroundColor": "#0B0D12",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.CHANGEME.trikicontroller",
+      "bundleIdentifier": "com.kostya0banan666.triki",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "Triki Controller uses Bluetooth to connect to your Triki/HOPX motion controller.",
         "ITSAppUsesNonExemptEncryption": false
@@ -19,11 +19,25 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
-          "modes": ["central"],
-          "bluetoothAlwaysPermission": "Triki Controller uses Bluetooth to connect to your Triki/HOPX motion controller."
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "Triki Controller uses Bluetooth to connect to your Triki/HOPX motion controller.",
+          "neverForLocation": true
         }
       ],
       "expo-dev-client"
-    ]
+    ],
+    "android": {
+      "package": "com.kostya0banan666.triki",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0D12"
+      },
+      "permissions": [
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    }
   }
 }
