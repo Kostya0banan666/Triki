@@ -1,0 +1,65 @@
+# Builds an installable Android APK on GitHub's free runners (no EAS quota needed)
+# and publishes it as the latest release:
+#   https://github.com/<owner>/<repo>/releases/latest/download/triki-controller.apk
+# The APK is signed with the standard React Native debug key, so every build
+# installs over the previous one (but not over an EAS-built copy: uninstall that first).
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm install
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install 2>&1 | tee prebuild.log
+      - name: Build release APK (arm64)
+        working-directory: android
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon --stacktrace 2>&1 | tee ../gradle.log
+      - name: Report build errors
+        if: failure()
+        run: |
+          f=gradle.log; [ -s gradle.log ] || f=prebuild.log
+          msg=$(grep -E "^e: |error:|Error:|What went wrong|Unable to resolve|Could not " -A4 "$f" | head -90)
+          [ -n "$msg" ] || msg=$(tail -70 "$f")
+          msg="${msg//'%'/'%25'}"
+          msg="${msg//$'\r'/}"
+          msg="${msg//$'\n'/'%0A'}"
+          echo "::error title=Android build failed::$msg"
+      - name: Collect APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk triki-controller.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: triki-controller-apk
+          path: triki-controller.apk
+      - name: Publish as latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Triki Controller for Android (build ${{ github.run_number }})
+          make_latest: true
+          files: triki-controller.apk
+          body: |
+            Install on Android: open this page on the phone, tap **triki-controller.apk**, allow installing from your browser.
+            Built from ${{ github.sha }}. arm64 phones (almost every phone from 2017 on).

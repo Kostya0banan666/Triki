@@ -3,13 +3,23 @@ export const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 export const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 /** Triki -> iPhone (notify) */
 export const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-export const NUS_EXTRA = '6e400004-b5a3-f393-e0a9-e50e24dcca9e';
+/** LED: write 01 = on, 00 = off (with response) */
+export const NUS_LED = '6e400004-b5a3-f393-e0a9-e50e24dcca9e';
 
 export const BATTERY_SERVICE = '0000180f-0000-1000-8000-00805f9b34fb';
 export const BATTERY_LEVEL = '00002a19-0000-1000-8000-00805f9b34fb';
 
-/** Start IMU streaming. */
-export const START_COMMAND = [0x20, 0x10, 0x00, 0xd0, 0x07, 0x68, 0x00, 0x03];
+export type StreamRate = 53 | 106 | 208;
+
+/**
+ * Start IMU streaming. The little-endian field (0x34/0x68/0xd0) selects the rate
+ * (see TRIKI Control docs/protocol.md). The motion engine is tuned for ~53 Hz.
+ */
+export function startCommand(rate: StreamRate): number[] {
+  const r = rate === 208 ? 0xd0 : rate === 106 ? 0x68 : 0x34;
+  return [0x20, 0x10, 0x00, 0xd0, 0x07, r, 0x00, 0x03];
+}
+export const DEFAULT_RATE: StreamRate = 53;
 
 export const DEVICE_NAME_MATCH = 'triki';
 export const SCAN_TIMEOUT_MS = 15000;

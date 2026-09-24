@@ -1,58 +1,147 @@
 import { GestureEngine } from '../src/gestures/GestureEngine';
-import type { GestureType } from '../src/gestures/types';
+import type { GestureEvent, GestureType } from '../src/gestures/types';
 import type { TrikiFrame } from '../src/types/triki';
 
-const still = (button = false): TrikiFrame => ({ button, gyro: { x: 0, y: 0, z: 0 }, accel: { x: 0, y: 0, z: 1 } });
-const rot = (x: number, y: number, z: number): TrikiFrame => ({ button: false, gyro: { x, y, z }, accel: { x: 0, y: 0, z: 1 } });
+/** Build a frame from RAW sensor units (what the cap actually sends). */
+const raw = (g: [number, number, number], a: [number, number, number], button = false): TrikiFrame => ({
+  button,
+  gyro: { x: g[0] / 131, y: g[1] / 131, z: g[2] / 131 },
+  accel: { x: a[0] / 2048, y: a[1] / 2048, z: a[2] / 2048 },
+});
 
-function run(frames: [TrikiFrame, number][]): GestureType[] {
-  const e = new GestureEngine();
-  const out: GestureType[] = [];
-  e.on((g) => out.push(g.type));
-  for (const [f, t] of frames) e.process(f, t);
-  return out;
+// Values seen on a real cap lying flat: gyro bias and gravity on -Z.
+const BIAS: [number, number, number] = [12, -31, -22];
+const FLAT: [number, number, number] = [24, 0, -2050];
+const DT = 19; // ~53 Hz
+
+const flat = (button = false) => raw(BIAS, FLAT, button);
+const twist = (rate: number) => raw([BIAS[0], BIAS[1], BIAS[2] + rate], FLAT);
+
+class Rig {
+  e = new GestureEngine();
+  t = 1000;
+  events: GestureEvent[] = [];
+  constructor(deferTap = true) {
+    this.e.deferTap = deferTap;
+    this.e.on((ev) => this.events.push(ev));
+    this.feed(flat(), 1600); // settle + calibrate
+  }
+  feed(f: TrikiFrame, ms: number) {
+    const end = this.t + ms;
+    for (; this.t < end; this.t += DT) this.e.process(f, this.t);
+  }
+  types(includeRepeats = false): GestureType[] {
+    return this.events
+      .filter((e) => includeRepeats || !e.repeat)
+      .filter((e) => e.type !== 'BUTTON_PRESS' && e.type !== 'BUTTON_RELEASE')
+      .map((e) => e.type);
+  }
 }
 
-const series = (from: number, to: number, f: TrikiFrame, step = 10): [TrikiFrame, number][] => {
-  const r: [TrikiFrame, number][] = [];
-  for (let t = from; t < to; t += step) r.push([f, t]);
-  return r;
-};
-
-describe('GestureEngine', () => {
-  it('single click after the double-click window', () => {
-    const out = run([...series(0, 100, still()), ...series(100, 200, still(true)), ...series(200, 800, still())]);
-    expect(out).toEqual(['BUTTON_PRESS', 'BUTTON_RELEASE', 'SINGLE_CLICK']);
+describe('GestureEngine (heading-free moves)', () => {
+  it('stays quiet while settling and at rest', () => {
+    const r = new Rig();
+    r.feed(flat(), 2000);
+    expect(r.types()).toEqual([]);
+    expect(r.e.state.action).toBe('IDLE');
   });
 
-  it('double click', () => {
-    const out = run([
-      ...series(0, 100, still(true)),
-      ...series(100, 200, still()),
-      ...series(200, 300, still(true)),
-      ...series(300, 900, still()),
-    ]);
-    expect(out.filter((g) => !g.startsWith('BUTTON'))).toEqual(['DOUBLE_CLICK']);
+  it('twist right / left, once per twist', () => {
+    const r = new Rig();
+    r.feed(twist(2500), 150);
+    r.feed(flat(), 300);
+    r.feed(twist(-2500), 150);
+    r.feed(flat(), 300);
+    expect(r.types()).toEqual(['TWIST_RIGHT', 'TWIST_LEFT']);
   });
 
-  it('hold', () => {
-    const out = run([...series(0, 1000, still(true)), ...series(1000, 1500, still())]);
-    expect(out).toEqual(['BUTTON_PRESS', 'HOLD', 'BUTTON_RELEASE']);
+  it('a held twist auto-repeats (volume knob)', () => {
+    const r = new Rig();
+    r.feed(twist(2500), 1200);
+    const all = r.types(true);
+    expect(all[0]).toBe('TWIST_RIGHT');
+    expect(all.length).toBeGreaterThanOrEqual(3);
+    expect(r.events.filter((e) => e.repeat).length).toBeGreaterThanOrEqual(2);
   });
 
-  it('flicks and twists by dominant axis', () => {
-    const burst = (f: TrikiFrame) => run([...series(0, 100, still()), ...series(100, 200, f), ...series(200, 400, still())]);
-    expect(burst(rot(400, 0, 0))).toContain('FLICK_UP');
-    expect(burst(rot(-400, 0, 0))).toContain('FLICK_DOWN');
-    expect(burst(rot(0, 0, 400))).toContain('FLICK_RIGHT');
-    expect(burst(rot(0, 0, -400))).toContain('FLICK_LEFT');
-    expect(burst(rot(0, 500, 0))).toContain('TWIST_CW');
-    expect(burst(rot(0, -500, 0))).toContain('TWIST_CCW');
+  it('invertTurn swaps direction', () => {
+    const r = new Rig();
+    r.e.setThresholds({ invertTurn: false });
+    r.feed(twist(2500), 150);
+    r.feed(flat(), 300);
+    expect(r.types()).toEqual(['TWIST_LEFT']);
   });
 
-  it('knock', () => {
-    const spike: TrikiFrame = { button: false, gyro: { x: 0, y: 0, z: 0 }, accel: { x: 2.5, y: 0, z: 1 } };
-    const out = run([...series(0, 200, still()), [spike, 200], ...series(210, 400, still())]);
-    expect(out).toContain('KNOCK');
+  it('ignores slow rotation below the twist threshold', () => {
+    const r = new Rig();
+    r.feed(twist(500), 500);
+    r.feed(flat(), 300);
+    expect(r.types()).toEqual([]);
+  });
+
+  it('tap (immediate when double-tap is off)', () => {
+    const r = new Rig(false);
+    r.feed(raw(BIAS, [24, 0, -2700]), DT);
+    r.feed(flat(), 400);
+    expect(r.types()).toEqual(['TAP']);
+    expect(r.events.find((e) => e.type === 'TAP')!.peakAccel).toBeGreaterThan(1.2);
+  });
+
+  it('tap waits for a possible second tap, then fires', () => {
+    const r = new Rig(true);
+    r.feed(raw(BIAS, [24, 0, -2700]), DT);
+    r.feed(flat(), 300);
+    expect(r.types()).toEqual([]);
+    r.feed(flat(), 500);
+    expect(r.types()).toEqual(['TAP']);
+  });
+
+  it('double tap', () => {
+    const r = new Rig(true);
+    r.feed(raw(BIAS, [24, 0, -2700]), DT);
+    r.feed(flat(), 480);
+    r.feed(raw(BIAS, [24, 0, -2700]), DT);
+    r.feed(flat(), 900);
+    expect(r.types()).toEqual(['DOUBLE_TAP']);
+  });
+
+  it('flip upside-down fires once until flipped back', () => {
+    const r = new Rig();
+    r.feed(raw(BIAS, [0, 0, 2050]), 1200);
+    r.feed(flat(), 800);
+    r.feed(raw(BIAS, [0, 0, 2050]), 1200);
+    expect(r.types()).toEqual(['FLIP', 'FLIP']);
+  });
+
+  it('tilt & hold', () => {
+    const r = new Rig();
+    r.feed(raw(BIAS, [1025, 0, -1775]), 600);
+    expect(r.types()[0]).toBe('TILT');
+  });
+
+  it('flat slide', () => {
+    const r = new Rig();
+    r.feed(raw(BIAS, [524, 0, -2050]), 150);
+    r.feed(flat(), 300);
+    expect(r.types()).toEqual(['SLIDE']);
+  });
+
+  it('button click, double click, hold', () => {
+    const click = new Rig();
+    click.feed(flat(true), 120);
+    click.feed(flat(), 700);
+    expect(click.types()).toEqual(['CLICK']);
+
+    const dbl = new Rig();
+    dbl.feed(flat(true), 100);
+    dbl.feed(flat(), 100);
+    dbl.feed(flat(true), 100);
+    dbl.feed(flat(), 700);
+    expect(dbl.types()).toEqual(['DOUBLE_CLICK']);
+
+    const hold = new Rig();
+    hold.feed(flat(true), 1000);
+    hold.feed(flat(), 300);
+    expect(hold.types()).toEqual(['HOLD']);
   });
 });

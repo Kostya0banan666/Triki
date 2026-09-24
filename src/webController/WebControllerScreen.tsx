@@ -1,21 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../hooks/AppContext';
-import { ACTION_LABEL } from '../profiles/profiles';
-import { GESTURE_LABEL } from '../gestures/types';
+import { ACTION_LABEL, REPEATABLE, type ActionType } from '../profiles/profiles';
+import { GESTURE_INFO } from '../gestures/types';
 import { WEB_TARGETS, scriptFor } from './targets';
-import { Btn, C, Row, s } from '../components/ui';
+import { GlowButton, Row, T, Txt } from '../components/ui';
+import { F } from '../components/theme';
 
 /**
- * Fallback controller: the web service runs INSIDE our own WebView, so Triki
- * gestures can scroll/play/pause it via injected JavaScript. This does not and
- * cannot control the native TikTok app.
+ * Fallback controller (iPhone): the web service runs INSIDE our own WebView,
+ * so Triki moves can scroll/play/pause it via injected JavaScript. This does
+ * not and cannot control the native TikTok app.
  */
 export function WebControllerScreen() {
-  const { engine, profiles, activeProfileId, status } = useApp();
-  const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0];
+  const { engine, profile, status } = useApp();
   const target = WEB_TARGETS.find((t) => t.id === profile.targetId) ?? WEB_TARGETS[0];
   const web = useRef<WebView>(null);
   const [url, setUrl] = useState(target.url);
@@ -32,18 +32,19 @@ export function WebControllerScreen() {
       engine.on((e) => {
         const action = profile.mappings[e.type];
         if (!action || action === 'NONE') return;
+        if (e.repeat && !REPEATABLE.has(action)) return;
         web.current?.injectJavaScript(scriptFor(target, action));
         Haptics.selectionAsync().catch(() => {});
-        setLast(`${GESTURE_LABEL[e.type]} → ${ACTION_LABEL[action]}`);
+        setLast(`${GESTURE_INFO[e.type].label} → ${ACTION_LABEL[action]}`);
       }),
     [engine, profile, target],
   );
 
-  const run = (a: Parameters<typeof scriptFor>[1]) => web.current?.injectJavaScript(scriptFor(target, a));
+  const run = (a: ActionType) => web.current?.injectJavaScript(scriptFor(target, a));
 
   return (
-    <View style={[s.screen, { paddingTop: 54 }]}>
-      <View style={{ paddingHorizontal: 12, gap: 6, paddingBottom: 6 }}>
+    <View style={{ flex: 1, backgroundColor: T.bgMid, paddingTop: 54 }}>
+      <View style={{ paddingHorizontal: 12, gap: 6, paddingBottom: 8 }}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
@@ -51,11 +52,11 @@ export function WebControllerScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
-          style={{ backgroundColor: C.card, color: C.text, borderRadius: 10, padding: 9 }}
+          style={{ backgroundColor: T.chip, color: T.text, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontFamily: F.medium }}
         />
-        <Text style={s.dim}>
-          {profile.name} · {status.state === 'streaming' ? 'Triki live' : 'Triki not streaming'} {last ? `· ${last}` : ''}
-        </Text>
+        <Txt style={{ color: T.dim, fontSize: 13 }}>
+          {profile.name} · {status.state === 'streaming' ? 'cap live' : 'cap not streaming'} {last ? `· ${last}` : ''}
+        </Txt>
       </View>
       <WebView
         ref={web}
@@ -67,10 +68,10 @@ export function WebControllerScreen() {
         sharedCookiesEnabled
         onLoadEnd={() => web.current?.injectJavaScript(scriptFor(target, 'NONE'))}
       />
-      <Row style={{ padding: 10, paddingBottom: 96, backgroundColor: C.bg }}>
-        <Btn label="▲" onPress={() => run('PREVIOUS')} />
-        <Btn label="▶︎❚❚" onPress={() => run('PLAY_PAUSE')} />
-        <Btn label="▼" onPress={() => run('NEXT')} />
+      <Row style={{ padding: 10, paddingBottom: 100, backgroundColor: T.bgMid }}>
+        <GlowButton label="▲" kind="dark" onPress={() => run('PREVIOUS')} style={{ flex: 1 }} />
+        <GlowButton label="▶︎ ❚❚" kind="dark" onPress={() => run('PLAY_PAUSE')} style={{ flex: 1 }} />
+        <GlowButton label="▼" kind="dark" onPress={() => run('NEXT')} style={{ flex: 1 }} />
       </Row>
     </View>
   );

@@ -5,6 +5,8 @@ export const FRAME_LENGTH = 14;
 export const GYRO_SCALE = 131.0;
 export const ACCEL_SCALE = 2048.0;
 const MAX_BUFFER = 4096;
+/** byte 1: 0x00 released / 0x01 pressed. Values up to 0x0F are tolerated for framing. */
+const MAX_ID = 0x0f;
 
 function int16le(b: Uint8Array, i: number): number {
   const v = b[i] | (b[i + 1] << 8);
@@ -15,7 +17,7 @@ function int16le(b: Uint8Array, i: number): number {
 export function decodeFrame(b: Uint8Array, offset = 0): TrikiFrame | null {
   if (b.length - offset < FRAME_LENGTH || b[offset] !== FRAME_HEADER) return null;
   const btn = b[offset + 1];
-  if (btn !== 0x00 && btn !== 0x01) return null;
+  if (btn > MAX_ID) return null;
   return {
     button: btn === 0x01,
     gyro: {
@@ -34,7 +36,7 @@ export function decodeFrame(b: Uint8Array, offset = 0): TrikiFrame | null {
 /**
  * Persistent byte-stream parser. BLE notification boundaries are NOT frame
  * boundaries, so bytes are accumulated across calls and frames are extracted by
- * scanning for the 0x22 header followed by a button byte of 0x00 or 0x01.
+ * scanning for the 0x22 header followed by a button/id byte (0x00-0x0F).
  *
  * Resync: a 0x22 can appear inside sensor data. When a candidate's successor
  * position (offset + 14) is already received and is not a header, and a better
@@ -64,7 +66,7 @@ export class TrikiFrameParser {
     let i = 0;
     while (i < merged.length) {
       const isCandidate =
-        merged[i] === FRAME_HEADER && (i + 1 >= merged.length || merged[i + 1] <= 0x01);
+        merged[i] === FRAME_HEADER && (i + 1 >= merged.length || merged[i + 1] <= MAX_ID);
       if (!isCandidate) {
         i++;
         this.droppedBytes++;
@@ -104,7 +106,7 @@ export class TrikiFrameParser {
   private hasAlignedHeader(b: Uint8Array, from: number, to: number): boolean {
     for (let j = from; j <= to && j < b.length; j++) {
       if (b[j] !== FRAME_HEADER) continue;
-      if (j + 1 < b.length && b[j + 1] > 0x01) continue;
+      if (j + 1 < b.length && b[j + 1] > MAX_ID) continue;
       const n = j + FRAME_LENGTH;
       if (n >= b.length || b[n] === FRAME_HEADER) return true;
     }

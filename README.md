@@ -1,143 +1,86 @@
-# Triki Controller (Android + iPhone)
+# TRIKI Control (phone)
 
-An iPhone app plus a Web Bluetooth page for the **Żabka Triki / HOPX** BLE motion controller.
-You do **not** need a Mac. Builds run on Expo's EAS cloud servers.
+Turn the **Żabka Triki / HOPX** Bluetooth bottle cap into a remote for your phone:
+twist the cap to scroll TikTok, knock it to pause, flip it to mute.
 
-| Part | Path | What it is |
+| | Android | iPhone |
 |---|---|---|
-| Native app | `App.tsx`, `src/` | Expo SDK 57 + React Native + `react-native-ble-plx`, built with EAS |
-| Web fallback | `web/index.html` | Single page for the **Bluefy** browser (Web Bluetooth). Hosted free on GitHub Pages |
-| Tests | `__tests__/` | Jest tests for the stream parser and gesture engine. They run in GitHub Actions |
+| Control the real TikTok / Shorts / Reels apps | ✅ (Accessibility service: real swipes and taps) | ❌ Apple allows no app to touch other apps |
+| Media keys (Spotify etc.): play/pause, next, previous | ✅ | ❌ |
+| Built-in web player controlled by the cap | – | ✅ (native app needs a paid Apple account; free route is the Bluefy web page) |
+| Price | Free: download the APK | Paid Apple Developer account, or free web page |
 
----
+## Install on Android (free, no computer)
 
-## 0. Android: the recommended route (free)
+1. On the phone, open **https://github.com/Kostya0banan666/Triki/releases/latest/download/triki-controller.apk**
+   (built automatically by GitHub Actions on every change). Allow “install unknown apps” for your browser.
+   If you installed an EAS-built copy before, uninstall it first (different signature).
+2. Open **TRIKI Control** and follow the 4 steps on the main screen:
+   1. **Connect**: press the cap's button once to wake it, tap Connect, allow *Nearby devices*.
+   2. **Choose app**: TikTok, Shorts, Reels, Music or Custom.
+   3. **Output**: tap *Enable phone control* and switch on **Triki Controller** in Accessibility.
+      Android 13+ may say *Restricted setting*: App info → ⋮ → *Allow restricted settings*, then try again.
+   4. **Play!**: tap *Open TikTok* and use the cap. A notification shows while Triki is in control.
+3. If Android kills it in the background: App info → Battery → **Unrestricted**.
 
-On Android the app can **control TikTok / YouTube Shorts / Instagram Reels themselves**, not just an in-app browser.
-It uses a public Android API: an **Accessibility Service** with `dispatchGesture` (see `modules/triki-accessibility`).
-Flick up swipes to the next video, a click taps to play/pause, and a double click likes. Twisting changes the system volume.
+## The moves
 
-Build (free Expo account, no Google Play account needed). From a phone, use GitHub Codespaces:
-```bash
-npm install
-npx eas-cli@latest login
-npx eas-cli@latest init
-npx eas-cli@latest build --platform android --profile preview
-```
-Say **Yes** when EAS offers to generate a keystore. When the build finishes, open its link on the Android phone, download the `.apk`, and install it. Allow "install unknown apps" for your browser if asked.
+The cap is round and has **no compass**, so it can never know which way is “up” or “left”.
+Every move is therefore *heading-free*: it works however the cap is turned
+(this is why the old “flick up/left” gestures were unreliable and were removed).
+The **Moves** tab shows each one animated and lets you practise.
 
-Then:
-1. Open Triki Controller, allow **Nearby devices**, and tap Scan, Connect, then Start Sensor.
-2. Go to **Settings, then Control other apps, then Open Accessibility settings**, and turn on **Triki Controller**.
-   On Android 13+ a sideloaded app first shows "Restricted setting". Go to Android Settings, then Apps, then Triki Controller, tap **⋮**, choose **Allow restricted settings**, and try again.
-3. Turn on **System control**, pick a profile such as TikTok, and switch to TikTok. Gestures only fire while Triki Controller is in the background, so it never swipes its own screen.
-4. Some phones (Xiaomi, Samsung, etc.) kill background apps. Set Triki Controller's battery usage to **Unrestricted**.
-
-Later builds: add the `EXPO_TOKEN` repo secret, then open **Actions, then EAS build, then Run workflow** and choose platform android.
-
-## 1. Apple account: what you actually need
-
-| | Free Apple ID | Apple Developer Program ($99/yr) |
+| Move | How | TikTok default |
 |---|---|---|
-| EAS cloud build of a signed `.ipa` for a real iPhone | ❌ EAS cannot sign with a free account. Free "personal team" signing only works through Xcode on a Mac | ✅ |
-| Install over the air (EAS "internal distribution", ad hoc) | ❌ | ✅ (after you register your iPhone's UDID) |
-| TestFlight | ❌ | ✅ |
-| Sideloading tools such as AltStore/Sideloadly | These need a computer and re-sign every 7 days. Not covered here | — |
+| Twist right / left | Flat on the table, twist like a dial | Next / previous video |
+| Tap | Knock it straight down once | Pause / play |
+| Double tap | Knock-knock | Like |
+| Slide | Push it flat across the table | Next video |
+| Flip | Turn it upside-down | Mute |
+| Tilt & hold | Lean it any direction and hold | (free) |
+| Button click / double / hold | The cap's button | Pause / Like / Back |
 
-**Bottom line:** without a Mac, the native app needs the **paid Apple Developer Program**.
-If you don't have it, use the **Triki Web Controller** (section 4). It's free and runs in Bluefy.
+Holding a twist repeats, so in the **Music** profile the cap is a volume knob.
+Every mapping is editable (Mapping tab) and each profile has its own tuning (Advanced tab).
 
----
+## iPhone
 
-## 2. What iOS allows and what it doesn't
+- **Free:** the web version in [`web/`](web/index.html) runs in the **Bluefy** browser (Web Bluetooth),
+  published by GitHub Pages at `https://kostya0banan666.github.io/Triki/` once Pages is enabled
+  (repo Settings → Pages → Source: GitHub Actions). It shows the cap live, teaches the moves and controls videos on that page only.
+- **Native app:** needs the paid Apple Developer Program ($99/yr) because EAS cannot sign iOS apps with a free Apple ID.
+  Then `npx eas-cli build --platform ios --profile preview` from a Codespace. On iPhone the cap controls the in-app Web tab.
 
-### Supported (implemented here)
-- BLE connection to Triki, a live IMU stream, and gesture recognition (CoreBluetooth through ble-plx)
-- Controlling video **inside this app**. The **Web** tab loads TikTok, YouTube Shorts, Instagram Reels or any site in a WKWebView, and injects JavaScript to scroll to the next or previous video, play/pause, change volume and mute
-- Keeping BLE alive in the background (`bluetooth-central` background mode). This keeps the connection only. It can't act on other apps
+## Build it yourself
 
-### Possible with public APIs, but not controlling TikTok (not implemented)
-- **MediaPlayer / MPRemoteCommandCenter** only works when *your* app is the one playing audio. An app can't send play/pause or next commands to another app
-- **Shortcuts / App Intents** let the user run *your* app's actions from Shortcuts. They can't trigger gestures in TikTok
-- **URL schemes** can *open* TikTok or YouTube (e.g. `snssdk1233://`). They can't scroll or like inside those apps
-- **GameController framework** is only for reading game controllers inside your own app. Triki isn't an MFi or HID gamepad
+Everything builds in the cloud; no Mac or PC needed.
 
-### Not possible with public iOS APIs (Android can: see section 0)
-- Injecting touches or swipes into another app such as the native TikTok app. There's no public API for this; `UIEvent` synthesis and private frameworks are App Store violations
-- Pretending to be a Bluetooth keyboard or HID device from an iPhone app. iOS apps can't advertise the HID-over-GATT profile
-- Accessibility **Switch Control** can scan and tap other apps using a *Bluetooth switch*. But Triki only speaks Nordic UART, not the HID switch profile, and an app can't feed Switch Control. The one real system-wide route is hardware: re-flash Triki, or add a relay such as an ESP32 acting as a BLE HID keyboard or switch. That's out of scope
+- **GitHub Actions** (free, automatic): `.github/workflows/android-apk.yml` builds the APK on each push to `main`;
+  `ci.yml` runs the TypeScript check and unit tests and deploys the web page.
+- **EAS** (optional): in a Codespace, `export EXPO_TOKEN=…` (expo.dev → Access tokens), then
+  `npx eas-cli@latest build --platform android --profile preview`.
 
----
-
-## 3. Native app: iPhone-only build steps
-
-Everything runs in the browser on your iPhone. A GitHub Codespace gives you a cloud Linux terminal.
-
-1. **Accounts.** Sign up at github.com and expo.dev. Join the Apple Developer Program at developer.apple.com/programs.
-2. **Repository.** Create an empty GitHub repo called `triki-controller` and upload this folder's contents. The easiest way is the GitHub website's "Add file → Upload files", or I can push it for you.
-3. **Open a Codespace.** On the repo page, go to **Code → Codespaces → Create codespace on main**. Safari works; use landscape. Then run in the terminal:
-   ```bash
-   npm install
-   npm test
-   npx eas-cli@latest login
-   ```
-4. **Set a unique bundle ID.** In `app.json`, change `com.CHANGEME.trikicontroller` to something like `com.yourname.trikicontroller`.
-5. **Link to EAS:**
-   ```bash
-   npx eas-cli@latest init
-   ```
-6. **Register your iPhone:**
-   ```bash
-   npx eas-cli@latest device:create
-   ```
-   Choose "Website", open the link **on your iPhone in Safari**, and install the profile (Settings → Profile Downloaded → Install).
-7. **Build in the cloud:**
-   ```bash
-   npx eas-cli@latest build --platform ios --profile preview
-   ```
-   Log in with your Apple ID when asked and let EAS create the certificates and provisioning profile. The build takes about 15–25 min on Expo's Macs.
-8. **Install.** Open the build link from the terminal, or expo.dev → your project → Builds, on your iPhone and tap **Install**.
-9. **Enable Developer Mode** (iOS 16+). Go to Settings → Privacy & Security → Developer Mode → On, restart, then confirm.
-10. **Launch and connect.** Open *Triki Controller*, allow Bluetooth, and press Triki's button to wake it. Tap **Scan for Triki**, then **Connect**, then **Start Sensor**.
-
-Later builds can run without a terminal. Add the `EXPO_TOKEN` repo secret, then go to **Actions → EAS iOS build → Run workflow**.
-
-> The `preview` profile is a standalone app, which is what you want. `development` builds a dev client that needs a Metro server (`npx expo start --tunnel` in Codespaces). Use it only for live code editing.
-
-### If a build fails
-Open the build page on expo.dev, read the failing step's log, fix it, and rebuild. The dependency most likely to need a version bump is `react-native-ble-plx` if a newer Expo SDK changes native APIs. `npx expo install --check` lists mismatches.
-
----
-
-## 4. Web fallback (no paid account)
-
-1. In the repo, go to **Settings → Pages → Source: GitHub Actions**. The `CI` workflow deploys `web/` on every push to `main`.
-2. On iPhone, install **Bluefy – Web BLE Browser** from the App Store.
-3. In Bluefy, open `https://<your-github-user>.github.io/triki-controller/`.
-4. Tap **Scan for Triki**, pick the device, then tap **Start Sensor**.
-
-The page shows the live button, gyro and accelerometer data, detects gestures, and lets you tune thresholds. It can drive a video player *on the page itself* (paste `.mp4` links). It can't control other apps. TikTok also blocks embedding, so TikTok can't be controlled from the web fallback at all.
-
----
-
-## 5. Protocol and architecture
-
-- NUS service `6E400001-…`, RX (write) `6E400002-…`, TX (notify) `6E400003-…`
-- Start sequence: subscribe to TX, wait 300 ms, then write `20 10 00 D0 07 68 00 03` to RX. No stop command is documented, so **Stop Sensor** unsubscribes
-- Frame: 14 bytes. The header is `0x22`, followed by the button byte (`00`/`01`), then gyro XYZ and accel XYZ as int16 LE. gyro/131 gives °/s; accel/2048 gives g
+## Code map
 
 ```
-modules/triki-accessibility/  Android native module (Kotlin): AccessibilityService, swipe/tap/volume
-src/
-  system/     SystemControl.ts (maps profile actions to Android swipes/taps), hooks/useSystemControl.ts
-  bluetooth/  TrikiBLE.ts (scan/connect/reconnect/watchdog), TrikiFrameParser.ts, constants.ts
-  gestures/   GestureEngine.ts (pure TS, platform-free), types.ts (thresholds, axis mapping)
-  profiles/   profiles.ts (TikTok / Shorts / Reels / Media / Custom, editable, saved)
-  webController/ targets.ts (per-site JS actions: add a site here), WebControllerScreen.tsx
-  hooks/      AppContext.tsx, useLiveFrame.ts (samples frames at 15 Hz, so ~100 Hz data never re-renders the app)
-  screens/    Home, Debug, Profiles, Settings
-  components/ ConnectionCard, LivePanel, ui
-web/index.html  Bluefy version (same parser and gesture algorithms, ported to plain JS)
+App.tsx                         fonts, tabs
+src/bluetooth/TrikiBLE.ts       scan / one-tap connect / reconnect / LED / stream start (~53 Hz)
+src/bluetooth/TrikiFrameParser  byte-stream → 14-byte frames (fragment-safe), unit tested
+src/gestures/GestureEngine.ts   heading-free motion engine + tap/button timing, unit tested
+src/profiles/profiles.ts        TikTok / Shorts / Reels / Music / Custom mappings + tuning
+src/system/SystemControl.ts     actions → Android swipes, taps, volume, media keys
+modules/triki-accessibility/    Kotlin: AccessibilityService, foreground service, media keys
+src/screens/                    Control, Moves, Mapping, Advanced
+src/components/                 cap mascot (SVG), live stage, move demos, neon UI kit
+src/webController/              iPhone in-app web player
+web/                            Bluefy web version (uses the same engine, bundled by CI)
 ```
 
-**Gesture axes:** which gyro axis counts as "up/down" depends on how you hold Triki. Flick it with the **Debug** tab open, see which axis spikes, and set it in **Settings → Axis mapping**.
+Protocol: Nordic UART `6E400001…`; write `20 10 00 D0 07 34 00 03` to RX (`…0002`) after subscribing to TX (`…0003`);
+14-byte frames `22 <button> gyroXYZ accelXYZ` (int16 LE); LED on/off = write `01`/`00` to `…0004`.
+
+## Credits
+
+The motion engine and protocol details are adapted from **[TRIKI Control](https://github.com/koksny/TRIKI-Control)**
+by Wojciech “Koksny” Górny (MIT), which also inspired the look. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Not affiliated with Żabka or Caps Apps.

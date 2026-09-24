@@ -5,7 +5,7 @@ import { log } from '../utils/log';
 
 /**
  * System-wide control of the foreground app. Android only: backed by an
- * AccessibilityService (public API). iOS has no equivalent, so this is a no-op there.
+ * AccessibilityService (public API) plus media keys. iOS has no equivalent.
  */
 export const systemControlSupported = Platform.OS === 'android' && TrikiAccessibility != null;
 
@@ -21,37 +21,55 @@ export function openAccessibilitySettings(): void {
   TrikiAccessibility?.openAccessibilitySettings();
 }
 
+export function openAppSettings(): void {
+  TrikiAccessibility?.openAppSettings();
+}
+
+/** Keeps the app process alive in the background (Android foreground service). */
+export function setKeepAlive(on: boolean, text = 'Triki is controlling your phone'): void {
+  try {
+    if (on) TrikiAccessibility?.startKeepAlive('Triki Controller', text);
+    else TrikiAccessibility?.stopKeepAlive();
+  } catch (e) {
+    log(`Keep-alive ${on ? 'start' : 'stop'} failed: ${String(e)}`, 'warn');
+  }
+}
+
+// Android KeyEvent codes
+const KEY_MEDIA_PLAY_PAUSE = 85;
+const KEY_MEDIA_NEXT = 87;
+const KEY_MEDIA_PREVIOUS = 88;
+
 /** Screen-fraction coordinates tuned for full-screen vertical video feeds. */
 const CENTER = { x: 0.5, y: 0.45 };
-const SWIPE_MS = 160;
+const SWIPE_MS = 170;
 
 export function runSystemAction(action: ActionType): boolean {
   const m = TrikiAccessibility;
   if (!m || action === 'NONE') return false;
-  let ok = false;
   switch (action) {
     case 'NEXT':
-      ok = m.swipe(0.5, 0.75, 0.5, 0.25, SWIPE_MS);
-      break;
+      return m.swipe(0.5, 0.74, 0.5, 0.26, SWIPE_MS);
     case 'PREVIOUS':
-      ok = m.swipe(0.5, 0.25, 0.5, 0.75, SWIPE_MS);
-      break;
+      return m.swipe(0.5, 0.26, 0.5, 0.74, SWIPE_MS);
     case 'PLAY_PAUSE':
-      ok = m.tap(CENTER.x, CENTER.y, 1);
-      break;
+      return m.tap(CENTER.x, CENTER.y, 1);
     case 'LIKE':
-      ok = m.tap(CENTER.x, CENTER.y, 2);
-      break;
+      return m.tap(CENTER.x, CENTER.y, 2);
     case 'VOLUME_UP':
-      ok = m.adjustVolume(1);
-      break;
+      return m.adjustVolume(1);
     case 'VOLUME_DOWN':
-      ok = m.adjustVolume(-1);
-      break;
+      return m.adjustVolume(-1);
     case 'MUTE':
-      ok = m.adjustVolume(0);
-      break;
+      return m.adjustVolume(0);
+    case 'MEDIA_PLAY_PAUSE':
+      return m.mediaKey(KEY_MEDIA_PLAY_PAUSE);
+    case 'MEDIA_NEXT':
+      return m.mediaKey(KEY_MEDIA_NEXT);
+    case 'MEDIA_PREVIOUS':
+      return m.mediaKey(KEY_MEDIA_PREVIOUS);
+    case 'BACK':
+      return m.globalAction('back');
   }
-  if (!ok) log(`System action ${action} failed (accessibility service off?)`, 'warn');
-  return ok;
+  return false;
 }

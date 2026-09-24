@@ -68,6 +68,10 @@ export const GENERIC: Record<ActionType, string> = {
   VOLUME_UP: vid(`if(!v)return;v.muted=false;v.volume=Math.min(1,v.volume+0.1);T.toast('🔊 '+Math.round(v.volume*100)+'%');`),
   VOLUME_DOWN: vid(`if(!v)return;v.volume=Math.max(0,v.volume-0.1);T.toast('🔉 '+Math.round(v.volume*100)+'%');`),
   MUTE: vid(`if(!v)return;v.muted=!v.muted;T.toast(v.muted?'🔇':'🔊');`),
+  MEDIA_PLAY_PAUSE: vid(`if(!v)return;if(v.paused){v.play();T.toast('▶');}else{v.pause();T.toast('❚❚');}`),
+  MEDIA_NEXT: `(function(){var T=window.__triki;T.key('ArrowDown');T.page(1);T.toast('⏭');})();true;`,
+  MEDIA_PREVIOUS: `(function(){var T=window.__triki;T.key('ArrowUp');T.page(-1);T.toast('⏮');})();true;`,
+  BACK: `(function(){history.back();})();true;`,
 };
 
 export const WEB_TARGETS: WebTarget[] = [

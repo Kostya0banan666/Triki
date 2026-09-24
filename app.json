@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0D12",
+    "backgroundColor": "#100C26",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kostya0banan666.triki",
@@ -38,6 +38,12 @@
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
+    },
+    "owner": "kostya0banan666",
+    "extra": {
+      "eas": {
+        "projectId": "50637e51-1550-4d2d-9b0c-4735aec8320b"
+      }
     }
   }
 }

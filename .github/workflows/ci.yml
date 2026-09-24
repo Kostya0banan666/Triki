@@ -31,6 +31,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Bundle the shared parser + motion engine for the web page
+        run: npx --yes esbuild@0.25.10 web/core-entry.ts --bundle --format=iife --global-name=Triki --target=es2019 --outfile=web/core.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

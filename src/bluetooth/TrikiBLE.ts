@@ -9,13 +9,16 @@ import {
   CONNECT_TIMEOUT_MS,
   DEVICE_NAME_MATCH,
   MAX_RECONNECT_ATTEMPTS,
+  DEFAULT_RATE,
+  NUS_LED,
   NUS_RX,
   NUS_SERVICE,
   NUS_TX,
   SCAN_TIMEOUT_MS,
   STALL_MS,
-  START_COMMAND,
   SUBSCRIBE_SETTLE_MS,
+  startCommand,
+  type StreamRate,
 } from './constants';
 import { log } from '../utils/log';
 
@@ -65,7 +68,11 @@ export class TrikiBLE {
   private watchdog: ReturnType<typeof setInterval> | null = null;
   private lastDataAt = 0;
   private userDisconnect = false;
-  private wantStreaming = false;
+  /** start the sensor automatically after connecting */
+  private wantStreaming = true;
+  private autoConnect = false;
+  private lastFrameT = 0;
+  streamRate: StreamRate = DEFAULT_RATE;
   private reconnectAttempts = 0;
   private found = new Map<string, FoundDevice>();
   private foundListeners = new Set<(d: FoundDevice[]) => void>();
@@ -104,6 +111,13 @@ export class TrikiBLE {
   }
 
   // ---------- scanning ----------
+  /** One-tap flow: scan, connect to the first Triki found, start the sensor. */
+  async quickConnect(): Promise<void> {
+    this.autoConnect = true;
+    this.wantStreaming = true;
+    await this.scan();
+  }
+
   async scan(): Promise<void> {
     if (!(await androidPermissions())) {
       this.setStatus({ state: 'unauthorized', error: 'Bluetooth permission denied. Allow "Nearby devices" in app settings.' });
@@ -132,8 +146,13 @@ export class TrikiBLE {
       this.found.set(d.id, { id: d.id, name, rssi: d.rssi });
       const list = [...this.found.values()];
       this.foundListeners.forEach((l) => l(list));
+      if (this.autoConnect) {
+        this.autoConnect = false;
+        this.connect({ id: d.id, name, rssi: d.rssi }).catch(() => {});
+      }
     });
     this.scanTimer = setTimeout(() => {
+      this.autoConnect = false;
       this.stopScan();
       if (this.status.state === 'scanning') {
         this.setStatus({ state: 'idle', error: this.found.size ? null : 'No Triki found. Press its button to wake it and scan again.' });
@@ -164,7 +183,7 @@ export class TrikiBLE {
       this.reconnectAttempts = 0;
       this.disconnectSub?.remove();
       this.disconnectSub = d.onDisconnected((e) => this.handleDisconnect(e?.message));
-      this.setStatus({ state: 'connected' });
+      this.setStatus({ state: 'connected', rssi: target.rssi });
       this.readExtras();
       if (this.wantStreaming) await this.startSensor();
     } catch (e) {
@@ -215,19 +234,42 @@ export class TrikiBLE {
       if (this.lastDataAt === 0) log(`First notification: ${bytesToHex(bytes)}`);
       this.lastDataAt = now;
       if (this.status.stalled) this.setStatus({ stalled: false });
-      for (const f of this.parser.push(bytes)) this.frameListeners.forEach((l) => l(f, now));
+      // notifications arrive in bursts; spread the frames out at the stream rate
+      const frames = this.parser.push(bytes);
+      const dt = 1000 / this.streamRate;
+      frames.forEach((f, i) => {
+        const t = Math.max(this.lastFrameT + 1, now - (frames.length - 1 - i) * dt);
+        this.lastFrameT = t;
+        this.frameListeners.forEach((l) => l(f, t));
+      });
     });
     await sleep(SUBSCRIBE_SETTLE_MS);
-    log('Writing start command 20 10 00 D0 07 68 00 03');
+    const cmd = startCommand(this.streamRate);
+    log(`Writing start command ${bytesToHex(Uint8Array.from(cmd))} (~${this.streamRate} Hz)`);
     try {
-      await d.writeCharacteristicWithResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(START_COMMAND));
+      await d.writeCharacteristicWithResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(cmd));
     } catch (e) {
       log(`Write with response failed (${String(e)}), retrying without response`, 'warn');
-      await d.writeCharacteristicWithoutResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(START_COMMAND));
+      await d.writeCharacteristicWithoutResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(cmd));
     }
     this.lastDataAt = 0;
     this.setStatus({ state: 'streaming' });
     this.startWatchdog();
+  }
+
+  get startCommandHex(): string {
+    return bytesToHex(Uint8Array.from(startCommand(this.streamRate)));
+  }
+
+  /** LED test: 01 = on, 00 = off, written with response to the 6E400004 characteristic. */
+  async setLed(on: boolean): Promise<void> {
+    const d = this.device;
+    if (!d) return;
+    try {
+      await d.writeCharacteristicWithResponseForService(NUS_SERVICE, NUS_LED, bytesToB64([on ? 0x01 : 0x00]));
+    } catch (e) {
+      log(`LED write failed: ${String(e)}`, 'warn');
+    }
   }
 
   /** There is no documented stop command; we stop by unsubscribing from TX. */
@@ -242,8 +284,10 @@ export class TrikiBLE {
 
   async disconnect(): Promise<void> {
     this.userDisconnect = true;
-    this.wantStreaming = false;
+    this.autoConnect = false;
+    this.stopScan();
     this.stopSensor();
+    this.wantStreaming = true;
     const d = this.device;
     this.device = null;
     if (d) {
@@ -293,7 +337,7 @@ export class TrikiBLE {
       if (this.lastDataAt && Date.now() - this.lastDataAt > STALL_MS && !this.status.stalled) {
         log('No data for a while — re-sending start command', 'warn');
         this.setStatus({ stalled: true });
-        d.writeCharacteristicWithResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(START_COMMAND)).catch(() => {});
+        d.writeCharacteristicWithResponseForService(NUS_SERVICE, NUS_RX, bytesToB64(startCommand(this.streamRate))).catch(() => {});
       }
       try {
         const r = await d.readRSSI();

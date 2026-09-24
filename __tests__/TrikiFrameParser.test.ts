@@ -22,7 +22,7 @@ describe('decodeFrame', () => {
   it('rejects wrong header, invalid button byte, short input', () => {
     const b = frame(0, [0, 0, 0], [0, 0, 0]);
     expect(decodeFrame(Uint8Array.from([0x21, ...b.slice(1)]))).toBeNull();
-    expect(decodeFrame(Uint8Array.from([0x22, 0x05, ...b.slice(2)]))).toBeNull();
+    expect(decodeFrame(Uint8Array.from([0x22, 0x35, ...b.slice(2)]))).toBeNull();
     expect(decodeFrame(Uint8Array.from(b.slice(0, 10)))).toBeNull();
   });
 });
