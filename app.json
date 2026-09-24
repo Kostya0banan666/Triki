@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Triki Controller",
+    "slug": "triki-controller",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0D12",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.CHANGEME.trikicontroller",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Triki Controller uses Bluetooth to connect to your Triki/HOPX motion controller.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "Triki Controller uses Bluetooth to connect to your Triki/HOPX motion controller."
+        }
+      ],
+      "expo-dev-client"
+    ]
+  }
+}

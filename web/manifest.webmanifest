@@ -1,0 +1,8 @@
+{
+  "name": "Triki Web Controller",
+  "short_name": "Triki",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B0D12",
+  "theme_color": "#0B0D12"
+}
